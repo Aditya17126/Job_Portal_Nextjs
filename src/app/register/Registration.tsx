@@ -22,31 +22,40 @@ import Link from "next/link";
 import React, { ChangeEvent, FormEvent, useState } from "react";
 import registrationAction from "@/features/auth/server/auth.action";
 import { toast } from "sonner";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { RegisterUserWithConfirmData, registerUserWithConfirmSchema } from "@/features/auth/auth.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 const Registration: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors },
   } = useForm({
-    resolver : zodResolver(registerUserWithConfirmSchema)
+    resolver: zodResolver(registerUserWithConfirmSchema)
   });
 
-  const onSubmit = async (data : RegisterUserWithConfirmData) => {
-   
-    const result = await registrationAction(data);
+  const onSubmit = async (data: RegisterUserWithConfirmData) => {
+    try {
+      setLoading(true);
+      const result = await registrationAction(data);
 
-    if (result.status === "SUCCESS") toast.success(result.message);
-    else toast.error(result.message);
+      if (result.status === "SUCCESS") toast.success(result.message);
+      else toast.error(result.message);
+
+    } catch (error) {
+      toast.error("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+
   };
 
-  console.log("Inside the regist" , errors);
+  console.log("Inside the regist", errors);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
@@ -115,15 +124,20 @@ const Registration: React.FC = () => {
             {/* Role Selection */}
             <div className="space-y-2">
               <Label htmlFor="name">I am a*</Label>
-              <Select {...register("role")}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select your role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="applicant">Job Applicant</SelectItem>
-                  <SelectItem value="employer">Employer</SelectItem>
-                </SelectContent>
-              </Select>
+              <Controller name="role" control={control} render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="applicant">Applicant</SelectItem>
+                    <SelectItem value="employer">Employer</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}>
+
+              </Controller>
+              {errors.role && <p className="text-sm text-destructive">{errors.role.message}</p>}
             </div>
 
             {/* PASSWORD */}
@@ -153,6 +167,7 @@ const Registration: React.FC = () => {
                   )}
                 </Button>
               </div>
+              {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
             </div>
 
             {/* CONFRIM PASSWORD */}
@@ -182,11 +197,12 @@ const Registration: React.FC = () => {
                   )}
                 </Button>
               </div>
+              {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
             </div>
 
             {/* SUBMIT  */}
-            <Button type="submit" className="w-full">
-              Create Account
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Creating Account..." : "Create Account"}
             </Button>
 
             <div className="text-center">

@@ -2,52 +2,36 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { LoginUserData, loginUserSchema } from '@/features/auth/auth.schema'
 import { loginUserAction } from '@/features/auth/server/auth.action'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Eye, EyeOff, Lock, Mail, UserCheck } from 'lucide-react'
 import Link from 'next/link'
 import React, { ChangeEvent, FormEvent, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
-
-interface LoginFormData {
-  email : string;
-  password : string;
-}
 
 
 const Login = () => {
    const [showPassword , setShowPassword] = useState(false);
-   const [formData , setFormData] = useState<LoginFormData>({
-    email :"",
-    password:"",
-   })
-  
-   const handleInputChange = (name : string, value : string) =>{
-     setFormData((prev) => ({
-       ...prev,
-       [name]:value
-     }))
-  }
-  // console.log(formData)
-  const handleFormSubmit = async (event : FormEvent<HTMLFormElement>) =>{
-    event.preventDefault();
-    try {
-        const loginData = {
-          email    : formData.email.toLowerCase().trim(),
-          password : formData.password.trim(),
-        }
+   const {register , handleSubmit ,formState : {errors} } = useForm({
+    resolver : zodResolver(loginUserSchema)
+   }) 
 
-        const result = await loginUserAction(loginData);
+  const onSubmit = async (data : LoginUserData) =>{
+    try {
+       
+        const result = await loginUserAction(data);
         console.log(result)
 
-      if(result.status === "SUCCESS"){
-        toast.success(result.message);
-      }else{
-        toast.error(result.message);
-      }
-    } catch (error) {}
-
-   
-
+        if(result.status === "SUCCESS"){
+          toast.success(result.message);
+        }else{
+          toast.error(result.message);
+        }
+    } catch (error) {
+      toast.error("Something went wrong");
+    }
   }
 
   return (
@@ -64,7 +48,7 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-             <form className='space-y-6' onSubmit={handleFormSubmit}>
+             <form className='space-y-6' onSubmit={handleSubmit(onSubmit)}>
                  {/* Email Field */}
                   <div className='space-y-2'>
                     <Label htmlFor='email'>Email Address *</Label>
@@ -75,12 +59,11 @@ const Login = () => {
                         type='email' 
                         placeholder='Enter your email' 
                         required 
-                        className='pl-10'
-                        value={formData.email} 
-                        onChange={(event : ChangeEvent<HTMLInputElement>) => handleInputChange("email" , event.target.value)}
+                        className={`pl-10 ${  errors.email ? "border-destructive":""}`}
+                        {...register("email")}
                       />
-
                     </div>
+                     {errors.email && <p className='text-sm text-destructive'>{errors.email.message}</p>}
                   </div>
                  
                  {/* PASSWORD */}
@@ -89,13 +72,13 @@ const Login = () => {
                       <div className='relative'>
                         <Lock className="absolute left-3 top-2.5 transform-translate-y-1/2 w-4 h-4 text-muted-foreground " />
                         <Input
-                          value={formData.password}
-                          onChange={(event : ChangeEvent<HTMLInputElement>) => handleInputChange("password" , event.target.value) }
-                            className='pl-10'
-                            id="password" 
-                            type= {showPassword ? "text" : "password"} 
-                            placeholder="Enter your password" 
-                            required />
+                          className={`pl-10 ${  errors.password ? "border-destructive":""}`}
+                          id="password" 
+                          type= {showPassword ? "text" : "password"} 
+                          placeholder="Enter your password" 
+                          required 
+                          {...register("password")}
+                        />
                         <Button 
                           type='button'
                           variant="ghost"

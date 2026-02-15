@@ -1,0 +1,50 @@
+# Fix Controller Render Prop in Registration.tsx
+
+The `<Controller>` component for the role `<Select>` field silently renders nothing because the render callback uses curly braces (`=> { ... }`) without a `return` statement. This means the JSX inside the callback is evaluated but **never returned** to React, so the role dropdown is invisible/broken. There is also a secondary type-safety issue — `useForm` is called without a generic type parameter, so `handleSubmit` infers its data type as `FieldValues` instead of [RegisterUserWithConfirmData](file:///d:/Job_Portal_Nextjs/job-portal-app/src/features/auth/auth.schema.ts#54-57), causing a type mismatch on the [onSubmit](file:///d:/Job_Portal_Nextjs/job-portal-app/src/app/register/Registration.tsx#42-57) handler.
+
+## Proposed Changes
+
+### Registration Component
+
+#### [MODIFY] [Registration.tsx](file:///d:/Job_Portal_Nextjs/job-portal-app/src/app/register/Registration.tsx)
+
+**Fix 1 — Controller render prop (line 127):**  Change `=> {` to `=> (` so the arrow function uses an implicit return (parenthesised expression body) instead of a block body.
+
+```diff
+-              <Controller name="role" control={control} render={({field}) =>{
++              <Controller name="role" control={control} render={({field}) => (
+                 <Select value={field.value} onValueChange={field.onChange}>
+                    ...
+                 </Select>
+-              }}>
++              )}>
+```
+
+**Fix 2 — Add generic type to `useForm` (line 38):**  This gives full type safety and eliminates the implicit `any` on `data` in [onSubmit](file:///d:/Job_Portal_Nextjs/job-portal-app/src/app/register/Registration.tsx#42-57).
+
+```diff
+-  } = useForm({
++  } = useForm<RegisterUserWithConfirmData>({
+```
+
+---
+
+### Documentation
+
+#### [MODIFY] [troubleshooting-errors.md](file:///d:/Job_Portal_Nextjs/job-portal-app/docs/troubleshooting-errors.md)
+
+Append a new **entry #6** documenting this error, following the existing format:
+- Error message (the type error / silent render failure)
+- Root cause (block body without `return`)
+- Why it happened
+- How it was fixed
+- Tips to prevent it in the future
+
+## Verification Plan
+
+### Automated Tests
+- Run `npx next build` (or check the already-running `npm run dev`) to confirm there are no TypeScript / compilation errors after the fix.
+
+### Manual Verification
+- Open `http://localhost:3000/register` in the browser and confirm the **"I am a"** role dropdown is visible and functional (can select "Applicant" or "Employer").
+- Fill in all fields and submit the form to ensure validation and submission still work end-to-end.
